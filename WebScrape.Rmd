@@ -1,0 +1,61 @@
+I'm going to be taking a look at the New York Knicks players advanced statistics for the 2022/2023 season.
+
+```{r libraries}
+
+library(tidyverse)
+library(rvest)
+library(dplyr)
+library(ggplot2)
+library(XML)
+
+```
+
+Firstly, we're going to have to webscrape. We'll be looking at Knicks counting stats first.
+
+```{r}
+myLink1 <- "https://www.basketball-reference.com/teams/NYK/2023.html"
+page1 <- read_html(myLink1)
+tables <- html_table(page1)
+
+counting_stats <- tables[[2]]
+head(counting_stats)
+
+#Now it's webscraped! Hooray! Our next step, is to make this data look nice.
+
+counting_stats <- counting_stats %>% 
+  select(-Rk)
+
+#I want to add position to each player as well, so I'll need to webscrape the first page off this table.
+
+positions <- tables[[1]] %>% 
+  select(Player, Pos)
+
+#Let's make the data sets more compatible for merging
+
+positions[14, "Player"] <- "Trevor Keels"
+positions[15, "Player"] <- "Duane Washington Jr."
+
+counting_stats <- merge(counting_stats, positions, by = "Player", all = TRUE)
+
+#Let's adjust it again and remove players with no games played and add positions by our own Google search for those who need it
+
+counting_stats <- counting_stats[!is.na(counting_stats$G), ] %>% 
+  select(Player, Pos, Age, everything())
+
+counting_stats[1, "Pos"] <- "SF"
+counting_stats[18, "Pos"] <- "PG"
+counting_stats[19, "Pos"] <- "SF"
+```
+
+Now, let's do the same thing but for the advanced statistics.
+
+```{r}
+
+advanced_stats <- tables[[6]]
+
+#Let's clean it up a little bit.
+
+advanced_stats <- advanced_stats %>% 
+  select(-c(18, 23))
+
+```
