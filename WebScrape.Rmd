@@ -7,6 +7,7 @@ library(rvest)
 library(dplyr)
 library(ggplot2)
 library(XML)
+library(ggthemes)
 
 ```
 
@@ -62,7 +63,7 @@ advanced_stats <- advanced_stats %>%
 
 I'm going to create a violin plot to compare the impact of the starters in comparison to players coming off the bench. I'm going to use Box Plus/Minus in the advanced statistic data frame. This statistic is adjusted per 100 possessions, so there is less of a bias for the starters (because they play more)
 
-```{r ggplot}
+```{r ggplot, warning = FALSE}
 
 #Let's first determine the starters versus the bench. I'm going to create a variable called GS_P - Games Started Percentage
 
@@ -108,20 +109,34 @@ Of course, we wish the sample size was higher but only so many players can play 
 
 This violin plot, shows the difference in quality between the starters and the bench. The media billed the Knicks' bench as one of the best in the league and there are various metric that back it. However, the starters are still superior. This Box Plus Minus statistic compares each Knicks athlete to the league average. Hopefully, they would be above and they are for the most part (besides RJ Barrett unsurprisingly - we have a love-hate relationship).
 
-```{r ggplot scatter}
+```{r ggplot scatter, warning = FALSE}
+
+#We're going to make a scatter plot comparing the Defensive Box Plus Minus and their PER, player effeciency rating, for the starters and bench players we looked at in the violin plot. A PER of 15 is a league-average player.
 
 advanced_stats_merge <- advanced_stats %>% 
-  select(Player, PER)
+  select(Player, DBPM, PER)
 
-start_bench <- merge(start_bench, by = "Player")  
+per_knicks <- merge(start_bench,advanced_stats_merge, by = "Player")
 
+per_knicks$Last_Name <- sapply(strsplit(per_knicks$Player, " "), function(x) x[2]) #ChatGPT consulted
 
-ggplot(start_bench, aes(, y)) +
+ggplot(per_knicks, aes(PER, DBPM, color = Role)) +
   geom_point() +
-  geom_text(aes(label = label), vjust = -0.5) +
-  labs(title = "Scatter Plot with Labels",
-       x = "X",
-       y = "Y") +
-  theme_minimal()
-
+  geom_text(aes(label = Last_Name), vjust = -0.5) +
+  labs(title = "Knicks Starters 2022/23",
+       x = "PER",
+       y = "Defensive Box Plus Minus") +
+  scale_x_continuous(limits = c(4.8, 23)) + 
+  scale_y_continuous(limits= c(-2, 2.5)) +
+  geom_vline(xintercept = 15, color = "red", linetype = "dashed") +
+  geom_hline(yintercept = 0, color = "red", linetype = "dashed") +
+  annotate("text", x = 0, y = -2.5, label = "PER of 15 and DBPM of 0 are League Average", hjust = 0, vjust = 0) +
+  theme_fivethirtyeight() +
+  theme(axis.title.x = element_text(margin = margin(t = 7)),
+        axis.title.y = element_text(margin = margin(r = 8))) +
+  theme(plot.caption = element_text(hjust = 0, size = 8, margin = margin(t = 15))) +
+  labs(caption = "PER of 15 and DBPM of 0 are League Average")
+  
+```
+In this graphic, we can compare the defensive abilities of all Knicks starters and their PER. The PER statistic does take counting statistics into account so its biased for the starters. However, DBPM does not and you see the true strength of the Knicks bench. they are very strong on defense. Excluding Rose, who only played 34 games this season, the only negative defensive presence on the Knicks bench this season was Obi Toppin. Toppin was nearly average with PER while only playing 15.7 minutes per game - his offensive contributions made up for his lack of defense. The violin plot above misses the true strength of the Knicks bench: they're defensive capabilites.
 
