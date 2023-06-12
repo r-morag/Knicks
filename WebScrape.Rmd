@@ -12,7 +12,7 @@ library(XML)
 
 Firstly, we're going to have to webscrape. We'll be looking at Knicks counting stats first.
 
-```{r}
+```{r webscrape}
 myLink1 <- "https://www.basketball-reference.com/teams/NYK/2023.html"
 page1 <- read_html(myLink1)
 tables <- html_table(page1)
@@ -43,13 +43,13 @@ counting_stats <- counting_stats[!is.na(counting_stats$G), ] %>%
   select(Player, Pos, Age, everything())
 
 counting_stats[1, "Pos"] <- "SF"
-counting_stats[18, "Pos"] <- "PG"
-counting_stats[19, "Pos"] <- "SF"
+counting_stats[15, "Pos"] <- "PG"
+counting_stats[16, "Pos"] <- "SF"
 ```
 
 Now, let's do the same thing but for the advanced statistics.
 
-```{r}
+```{r advanced stats}
 
 advanced_stats <- tables[[6]]
 
@@ -59,3 +59,54 @@ advanced_stats <- advanced_stats %>%
   select(-c(18, 23))
 
 ```
+
+I'm going to create a violin plot to compare the impact of the starters in comparison to players coming off the bench. I'm going to use Box Plus/Minus in the advanced statistic data frame. This statistic is adjusted per 100 possessions, so there is less of a bias for the starters (because they play more)
+
+```{r ggplot}
+
+#Let's first determine the starters versus the bench. I'm going to create a variable called GS_P - Games Started Percentage
+
+counting_stats$GS_P <- counting_stats$GS / counting_stats$G
+
+start_bench <- counting_stats %>% 
+  select(Player, Pos, Age, G, GS, GS_P, MP)
+
+#I'm going to exclude players based on several different categories. Firstly, games played. I want players who got minutes for a majority of the season or are Josh Hart. Josh Hart was a trade deadline acquisition for the Knicks and became an invaluable piece of the team. The arbitrary number I've decided upon is 20 games.
+
+start_bench <- start_bench %>%
+  filter(!(G < 20 & Player != "Josh Hart")) #ChatGPT consulted
+
+#Next, we're going to make a category for whether we consider the player a starter or a bench player. I'm going to use the percentage of 80%, leaving us with five starters and six bench players.
+
+start_bench <- start_bench %>% 
+  mutate(Role = ifelse(GS_P >= 0.8, "Starter", "Bench"))
+
+#Merging the statistic of choice from the advanced data set
+
+start_bench <- merge(start_bench, advanced_stats, by = "Player")  
+
+start_bench <- start_bench %>% 
+  select(Player, Age.x, G.x, GS, GS_P, MP.x, Role, BPM) %>% 
+  rename(Age = Age.x) %>% 
+  rename(G = G.x) %>% 
+  rename(MP = MP.x)
+
+#Now, we can begin plotting
+
+ggplot(start_bench, aes(x = Role, y = BPM, fill = Role)) +
+  geom_violin() +
+  geom_boxplot(width = 0.2, fill = "white", color = "black", outlier.shape = NA) + 
+  scale_fill_manual(values = c("#E69F00", "#56B4E9")) +
+  labs(title = "BPM of Starters vs Bench, Knicks 22/23", x = "Role", y = "BPM") +
+  theme_minimal()
+
+
+
+```
+
+Of course, we wish the sample size was higher but only so many players can play for a basketball season. 
+
+This violin plot, shows the difference in quality between the starters and the bench. The media billed the Knicks' bench as one of the best in the league and there are various metric that back it. However, the starters are still superior. This Box Plus Minus statistic compares each Knicks athlete to the league average. Hopefully, they would be above and they are for the most part (besides RJ Barrett unsurprisingly - we have a love-hate relationship).
+
+
+
