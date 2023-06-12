@@ -108,5 +108,20 @@ Of course, we wish the sample size was higher but only so many players can play 
 
 This violin plot, shows the difference in quality between the starters and the bench. The media billed the Knicks' bench as one of the best in the league and there are various metric that back it. However, the starters are still superior. This Box Plus Minus statistic compares each Knicks athlete to the league average. Hopefully, they would be above and they are for the most part (besides RJ Barrett unsurprisingly - we have a love-hate relationship).
 
+```{r ggplot scatter}
+
+advanced_stats_merge <- advanced_stats %>% 
+  select(Player, PER)
+
+start_bench <- merge(start_bench, by = "Player")  
+
+
+ggplot(start_bench, aes(, y)) +
+  geom_point() +
+  geom_text(aes(label = label), vjust = -0.5) +
+  labs(title = "Scatter Plot with Labels",
+       x = "X",
+       y = "Y") +
+  theme_minimal()
 
 
