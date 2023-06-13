@@ -1,0 +1,65 @@
+```{r libraries}
+
+library(tidyverse)
+library(rvest)
+library(dplyr)
+library(ggplot2)
+library(XML)
+library(ggthemes)
+library(gganimate)
+library(transformr)
+library(ggthemes)
+
+```
+
+```{r webscrape}
+myLink2 <- "https://www.basketball-reference.com/teams/NYK/"
+page2 <- read_html(myLink2)
+tables2 <- html_table(page2)
+
+knicks_data <- tables2[[1]]
+
+```
+
+```{r}
+
+#Removing NA columns
+
+knicks_data <- knicks_data[, -16]
+knicks_data <- knicks_data[, -9]
+
+#I'm going to keep only years when the Knicks were in the NBA
+
+knicks_data <- knicks_data %>% 
+  filter(Lg != "BAA")
+
+#Makes the data more tidy - the column name with % is terrible
+
+knicks_data$winloss <- knicks_data$`W/L%`
+knicks_data <- knicks_data[, -6]
+
+#Make a year variable
+
+knicks_data$Year <- as.numeric(substr(knicks_data$Season, 1, 4))
+
+#Make a playoffs variable
+
+knicks_data$Playoffs <- ifelse(grepl("\\*$", knicks_data$Team), "Yes", "No") #ChatGPT consulted
+
+#Let's plot!
+
+p <- knicks_data %>% 
+  ggplot(aes(x = Year, y = winloss, fill = Playoffs)) +
+  geom_bar(stat = "identity") +
+  labs(title = "Knicks Win Percentage Over Time") +
+  xlab("Year") +
+  ylab("Win Percentage") +
+  scale_fill_manual(values = c("blue", "orange")) +
+  theme_fivethirtyeight() +
+  transition_time(Year)
+
+knicks_data$playoffs <- ifelse(grepl("\\*$", knicks_data$Team), TRUE, FALSE)
+animate(p, nframes = 80, fps = 4)
+
+
+```
