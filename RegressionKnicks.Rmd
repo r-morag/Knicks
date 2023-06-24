@@ -1,0 +1,87 @@
+```{r libraries}
+
+library(tidyverse)
+library(rvest)
+library(dplyr)
+library(XML)
+library(car)
+
+```
+
+I'm going to run regression on the Knicks statistics from this last season. Both the counting and advanced statistics will be used.
+
+```{r webscrape}
+
+myLink1 <- "https://www.basketball-reference.com/teams/NYK/2023.html"
+page1 <- read_html(myLink1)
+tables <- html_table(page1)
+
+counting_stats <- tables[[2]]
+head(counting_stats)
+
+#Now it's webscraped! Hooray! Our next step, is to make this data look nice.
+
+counting_stats <- counting_stats %>% 
+  select(-Rk)
+
+#I want to add position to each player as well, so I'll need to webscrape the first page off this table.
+
+positions <- tables[[1]] %>% 
+  select(Player, Pos)
+
+#Let's make the data sets more compatible for merging
+
+positions[14, "Player"] <- "Trevor Keels"
+positions[15, "Player"] <- "Duane Washington Jr."
+
+counting_stats <- merge(counting_stats, positions, by = "Player", all = TRUE)
+
+#Let's adjust it again and remove players with no games played and add positions by our own Google search for those who need it
+
+counting_stats <- counting_stats[!is.na(counting_stats$G), ] %>% 
+  select(Player, Pos, Age, everything())
+
+counting_stats[1, "Pos"] <- "SF"
+counting_stats[15, "Pos"] <- "PG"
+counting_stats[16, "Pos"] <- "SF"
+
+```
+
+Now, let's do the same thing but for the advanced statistics.
+
+```{r advanced stats}
+
+advanced_stats <- tables[[6]]
+
+#Let's clean it up a little bit.
+
+advanced_stats <- advanced_stats %>% 
+  select(-c(18, 23))
+
+```
+
+Using the same lines of codes to webscrape and clean the Basketball Reference data, we are ready to run regression.
+Firstly, we are going to analyze the impact of different statistics on a players three point shooting percentage.
+
+``` {r}
+#Let's filter out Trevor Keels, Svi, and Arcidiacono for playing under 13 games and a very small amount of minutes per game (under 3).
+
+#I've decided to run linear regression with multiple predictors on three point shooting percentage. The variables of choice are age three pointers attempted per game, two point field goal percentage, and free throw percentage. 
+
+#In short, my motivation for this is Scoot Henderson. Henderson, and other players of his archetype, are lauded by draft analysts. It's always claimed that free throw percentage is an indicator for a players three point shooting ability. I'm going to compare the Knicks on several different statistics to see if three point shooting does have similarities to their free throw shooting.
+
+three_point <- counting_stats %>% 
+  filter(!(MP < 4)) %>% 
+  rename(ThreeP_Per = '3P%') %>% 
+  rename(ThreeP_A = '3PA') %>%
+  rename(TwoP_Per = '2P%') %>%
+  rename(FTP = 'FT%') %>%
+  select(Age, ThreeP_Per, ThreeP_A, TwoP_Per, FTP)
+
+model <- lm(ThreeP_Per ~ Age + ThreeP_A + TwoP_Per + FTP, data = three_point)
+
+summary(model)
+```
+
+These results were very interesting. The coefficient for free throw percentage had the largest magnitude and was positive. So there exists a positive association between free throw percentage and three point percentage. There is no relation with the predictor of age and most interesting of all - there is no relationship between their two point percentage and their three point shooting percentage.
+
